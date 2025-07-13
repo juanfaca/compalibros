@@ -253,9 +253,7 @@ if st.button("Buscar"):
 
         # Guarda el documento en Firestore
         try:
-            # Asegúrate de que 'db' esté inicializado y disponible antes de intentar guardar
             if 'db' in locals() or 'db' in globals():
-                # Usa la colección 'busquedas_libros' que creaste en Firestore
                 doc_ref = db.collection('busquedas_libros').add(search_data)
                 st.success(f"Datos de la búsqueda guardados en Firestore con ID: {doc_ref[1].id}")
             else:
