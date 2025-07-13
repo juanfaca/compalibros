@@ -15,7 +15,9 @@ st.set_page_config(
 )
 
 # --- Monitoreo con G4A ---
+print("DEBUG: Intentando obtener google_analytics_id de st.secrets...")
 ga4_measurement_id = st.secrets.get("google_analytics_id", None)
+print(f"DEBUG: ga4_measurement_id obtenido: {ga4_measurement_id}")
 
 if ga4_measurement_id:
     google_analytics_code = f"""
