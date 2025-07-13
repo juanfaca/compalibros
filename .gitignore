@@ -6,11 +6,11 @@ venv/
 __pycache__/
 *.pyc
 
-# Archivos de Streamlit específicos
-.streamlit/local_configs/ # Si tienes configuraciones locales que no quieres compartir
+# Archivos de Streamlit
+.streamlit
 
 # Ignorar archivos de macOS si usas
 .DS_Store
 
-# Ignorar archivos específicos de VS Code si no quieres compartirlos
+# Ignorar archivos específicos de VS Code
 .vscode/

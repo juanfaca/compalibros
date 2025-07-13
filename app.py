@@ -2,7 +2,6 @@ import streamlit as st
 from pruebas import precios
 from openlibrary import obtener_datos
 import pandas as pd
-import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
@@ -31,27 +30,22 @@ if ga4_measurement_id:
     </script>
     """
     st.markdown(google_analytics_code, unsafe_allow_html=True)
+    print("ID de Google Analytics encontrado. El seguimiento estará activo")
 else:
     print("ID de Google Analytics no encontrado en Streamlit Secrets. El seguimiento no estará activo")
 
 # --- Inicialización de Firebase (solo una vez al inicio de la aplicación) ---
-# Este bloque se asegura de que Firebase se inicialice solo una vez por sesión de Streamlit.
 if not firebase_admin._apps:
     try:
-        # Intenta cargar las credenciales desde st.secrets (para despliegues en Streamlit Cloud)
         if "gcp_service_account" in st.secrets:
-            # Convierte el diccionario de secretos a un diccionario de credenciales de Firebase.
-            # La clave privada puede necesitar un reemplazo de \n si no se maneja automáticamente
-            creds_dict = st.secrets["gcp_service_account"]
-            # Asegúrate de que la private_key tenga los saltos de línea correctos
+            creds_dict = dict(st.secrets["gcp_service_account"])
+
             if "private_key" in creds_dict:
                 creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
 
             cred = credentials.Certificate(creds_dict)
-            # Mensaje de éxito ahora se imprime en la consola, no en la UI
             print("Conexión a Firestore establecida usando Streamlit Secrets.")
         else:
-            # Mensaje de advertencia ahora se imprime en la consola, no en la UI
             print("ADVERTENCIA: No se encontró 'gcp_service_account' en st.secrets. Intentando cargar credenciales por defecto (solo para desarrollo local).")
             cred = credentials.ApplicationDefault()
 
