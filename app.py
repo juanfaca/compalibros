@@ -15,9 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Google Analytics Tracking Code ---
-# Obtiene el ID de Medición de Google Analytics desde st.secrets
-# Si no está en secrets (ej. en desarrollo local sin configurar), usa un valor por defecto o None
+# --- Monitoreo con G4A ---
 ga4_measurement_id = st.secrets.get("google_analytics_id", None)
 
 if ga4_measurement_id:
@@ -34,8 +32,7 @@ if ga4_measurement_id:
     """
     st.markdown(google_analytics_code, unsafe_allow_html=True)
 else:
-    st.warning("ID de Google Analytics no encontrado en Streamlit Secrets. El seguimiento no estará activo.")
-# --- Fin del código de Google Analytics ---
+    print("ID de Google Analytics no encontrado en Streamlit Secrets. El seguimiento no estará activo")
 
 # --- Inicialización de Firebase (solo una vez al inicio de la aplicación) ---
 # Este bloque se asegura de que Firebase se inicialice solo una vez por sesión de Streamlit.
@@ -51,20 +48,19 @@ if not firebase_admin._apps:
                 creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
 
             cred = credentials.Certificate(creds_dict)
-            st.success("Credenciales de Streamlit Secrets cargadas.")
+            # Mensaje de éxito ahora se imprime en la consola, no en la UI
+            print("Conexión a Firestore establecida usando Streamlit Secrets.")
         else:
-            # Para desarrollo local, si no usas Streamlit Secrets, puedes usar Application Default Credentials
-            # Esto funcionará si has configurado las ADC localmente (ej. con `gcloud auth application-default login`)
-            st.warning("No se encontró 'gcp_service_account' en st.secrets. Intentando cargar credenciales por defecto (solo para desarrollo local).")
+            # Mensaje de advertencia ahora se imprime en la consola, no en la UI
+            print("ADVERTENCIA: No se encontró 'gcp_service_account' en st.secrets. Intentando cargar credenciales por defecto (solo para desarrollo local).")
             cred = credentials.ApplicationDefault()
 
         firebase_admin.initialize_app(cred)
         db = firestore.client() # Obtiene la instancia del cliente de Firestore
-        st.success("Conexión a Firestore establecida.")
     except Exception as e:
-        st.error(f"Error al inicializar Firebase: {e}")
-        st.info("Asegúrate de que tus credenciales de Firebase estén configuradas correctamente en Streamlit Secrets o localmente.")
-        st.stop() # Detiene la ejecución de la app si Firebase no se puede inicializar
+        print(f"Error al inicializar Firebase: {e}")
+        print("Asegúrate de que tus credenciales de Firebase estén configuradas correctamente en Streamlit Secrets o localmente.")
+        st.stop()
 
 # --- Estilos CSS personalizados ---
 st.markdown("""
