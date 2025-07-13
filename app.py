@@ -37,26 +37,41 @@ else:
     print("ID de Google Analytics no encontrado en Streamlit Secrets. El seguimiento no estará activo")
 
 # --- Inicialización de Firebase (solo una vez al inicio de la aplicación) ---
-if not firebase_admin._apps:
+print("DEBUG: Verificando inicialización de Firebase...")
+if "db" not in st.session_state:
     try:
-        if "gcp_service_account" in st.secrets:
-            creds_dict = dict(st.secrets["gcp_service_account"])
+        print("DEBUG: Firebase no inicializado en session_state. Intentando inicializar...")
+        if not firebase_admin._apps:
+            if "gcp_service_account" in st.secrets:
+                print("DEBUG: 'gcp_service_account' encontrado en st.secrets.")
+                creds_dict = dict(st.secrets["gcp_service_account"])
+                
+                if "private_key" in creds_dict:
+                    creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
+                    print("DEBUG: private_key procesada para saltos de línea.")
+                else:
+                    print("DEBUG: private_key no encontrada en creds_dict. Posible problema en secrets.toml.")
 
-            if "private_key" in creds_dict:
-                creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
-
-            cred = credentials.Certificate(creds_dict)
-            print("Conexión a Firestore establecida usando Streamlit Secrets.")
+                cred = credentials.Certificate(creds_dict)
+                print("DEBUG: Credenciales de Firebase cargadas desde Streamlit Secrets.")
+            else:
+                print("ADVERTENCIA: No se encontró 'gcp_service_account' en st.secrets. Intentando cargar credenciales por defecto.")
+                cred = credentials.ApplicationDefault()
+            
+            firebase_admin.initialize_app(cred)
+            print("DEBUG: Firebase Admin SDK inicializado.")
         else:
-            print("ADVERTENCIA: No se encontró 'gcp_service_account' en st.secrets. Intentando cargar credenciales por defecto (solo para desarrollo local).")
-            cred = credentials.ApplicationDefault()
+            print("DEBUG: Firebase Admin SDK ya inicializado (por un rerun anterior).")
 
-        firebase_admin.initialize_app(cred)
-        db = firestore.client() # Obtiene la instancia del cliente de Firestore
+        st.session_state.db = firestore.client()
+        print("DEBUG: Conexión a Firestore establecida y almacenada en st.session_state.db.")
+
     except Exception as e:
-        print(f"Error al inicializar Firebase: {e}")
-        print("Asegúrate de que tus credenciales de Firebase estén configuradas correctamente en Streamlit Secrets o localmente.")
-        st.stop()
+        print(f"ERROR: Error al inicializar Firebase: {e}")
+        print("INFO: Asegúrate de que tus credenciales de Firebase estén configuradas correctamente en Streamlit Secrets o localmente.")
+        st.stop() # Detiene la ejecución de la app si Firebase no se puede inicializar
+else:
+    print("DEBUG: Cliente de Firestore ya disponible en st.session_state.db.")
 
 # --- Estilos CSS personalizados ---
 st.markdown("""
@@ -212,56 +227,54 @@ if st.button("Buscar"):
             pass
 
         # --- PREPARAR Y GUARDAR DATOS EN FIRESTORE ---
-        # Inicializa los precios para las librerías específicas con None
         firestore_prices = {
             'precio_communitas': None,
             'precio_el_virrey': None,
             'precio_ibero': None,
             'precio_crisol': None
         }
-
-        # Mapea los nombres de las librerías del DataFrame a los campos de Firestore
         bookstore_map = {
             'communitas': 'precio_communitas',
             'el virrey': 'precio_el_virrey',
             'ibero': 'precio_ibero',
             'crisol': 'precio_crisol'
         }
-
-        # Itera sobre los datos para extraer los precios y mapearlos
+        print("DEBUG: Preparando datos para Firestore...")
         for _, row in data.iterrows():
             libreria_name = row.get('librería', '').lower().strip()
             price_value = row.get('precio')
 
-            # Verifica si el precio es válido y conviértelo a float si no es None/NaN
             if pd.notnull(price_value) and price_value != '' and price_value is not None:
                 try:
                     price_value = float(price_value)
                 except ValueError:
-                    price_value = None # Deja como None si la conversión falla
+                    price_value = None
             else:
-                price_value = None # Establece a None si no está disponible
+                price_value = None
 
             if libreria_name in bookstore_map:
                 firestore_prices[bookstore_map[libreria_name]] = price_value
+        print(f"DEBUG: Datos de precios para Firestore: {firestore_prices}")
 
-        # Crea el documento a guardar en Firestore
         search_data = {
             'isbn': isbn,
-            'fecha_consulta': datetime.now(), # Timestamp actual con fecha y hora
+            'fecha_consulta': datetime.now(),
             'nombre_libro': nombre,
-            **firestore_prices # Desempaqueta el diccionario de precios en el documento
+            **firestore_prices
         }
+        print(f"DEBUG: Documento a guardar en Firestore: {search_data}")
 
-        # Guarda el documento en Firestore
         try:
-            if 'db' in locals() or 'db' in globals():
-                doc_ref = db.collection('busquedas_libros').add(search_data)
+            if "db" in st.session_state:
+                doc_ref = st.session_state.db.collection('busquedas_libros').add(search_data)
                 st.success(f"Datos de la búsqueda guardados en Firestore con ID: {doc_ref[1].id}")
+                print(f"DEBUG: Datos de la búsqueda guardados en Firestore con ID: {doc_ref[1].id}")
             else:
-                st.error("Error: La conexión a Firestore no se estableció correctamente. No se pudieron guardar los datos.")
+                st.error("Error: El cliente de Firestore no está disponible en st.session_state. No se pudieron guardar los datos.")
+                print("ERROR: El cliente de Firestore no está disponible en st.session_state. No se pudieron guardar los datos.")
         except Exception as e:
             st.error(f"Error al guardar los datos en Firestore: {e}")
+            print(f"ERROR: Error al guardar los datos en Firestore: {e}")
         # --- FIN DE LA SECCIÓN DE FIRESTORE ---
 
         for _, row in data.iterrows():
