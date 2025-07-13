@@ -33,3 +33,6 @@ def precios(x):
         resultados = resultados.sort_values(by='precio_venta', ascending=True)
 
     return resultados
+
+#isbn=9788483933558
+#print(precios(isbn))

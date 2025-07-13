@@ -76,5 +76,5 @@ def obtener_datos(x):
     data = pd.DataFrame([product_data])
     return data
 
-df=obtener_datos(9788437648828)
-print(df)
+#df=obtener_datos(9788437648828)
+#print(df)

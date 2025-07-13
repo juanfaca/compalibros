@@ -2,6 +2,10 @@ import streamlit as st
 from pruebas import precios
 from openlibrary import obtener_datos
 import pandas as pd
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
+from datetime import datetime
 
 # --- Configuración de la página ---
 st.set_page_config(
@@ -10,6 +14,57 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
+
+# --- Google Analytics Tracking Code ---
+# Obtiene el ID de Medición de Google Analytics desde st.secrets
+# Si no está en secrets (ej. en desarrollo local sin configurar), usa un valor por defecto o None
+ga4_measurement_id = st.secrets.get("google_analytics_id", None)
+
+if ga4_measurement_id:
+    google_analytics_code = f"""
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={ga4_measurement_id}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){{dataLayer.push(arguments);}}
+      gtag('js', new Date());
+
+      gtag('config', '{ga4_measurement_id}');
+    </script>
+    """
+    st.markdown(google_analytics_code, unsafe_allow_html=True)
+else:
+    st.warning("ID de Google Analytics no encontrado en Streamlit Secrets. El seguimiento no estará activo.")
+# --- Fin del código de Google Analytics ---
+
+# --- Inicialización de Firebase (solo una vez al inicio de la aplicación) ---
+# Este bloque se asegura de que Firebase se inicialice solo una vez por sesión de Streamlit.
+if not firebase_admin._apps:
+    try:
+        # Intenta cargar las credenciales desde st.secrets (para despliegues en Streamlit Cloud)
+        if "gcp_service_account" in st.secrets:
+            # Convierte el diccionario de secretos a un diccionario de credenciales de Firebase.
+            # La clave privada puede necesitar un reemplazo de \n si no se maneja automáticamente
+            creds_dict = st.secrets["gcp_service_account"]
+            # Asegúrate de que la private_key tenga los saltos de línea correctos
+            if "private_key" in creds_dict:
+                creds_dict["private_key"] = creds_dict["private_key"].replace('\\n', '\n')
+
+            cred = credentials.Certificate(creds_dict)
+            st.success("Credenciales de Streamlit Secrets cargadas.")
+        else:
+            # Para desarrollo local, si no usas Streamlit Secrets, puedes usar Application Default Credentials
+            # Esto funcionará si has configurado las ADC localmente (ej. con `gcloud auth application-default login`)
+            st.warning("No se encontró 'gcp_service_account' en st.secrets. Intentando cargar credenciales por defecto (solo para desarrollo local).")
+            cred = credentials.ApplicationDefault()
+
+        firebase_admin.initialize_app(cred)
+        db = firestore.client() # Obtiene la instancia del cliente de Firestore
+        st.success("Conexión a Firestore establecida.")
+    except Exception as e:
+        st.error(f"Error al inicializar Firebase: {e}")
+        st.info("Asegúrate de que tus credenciales de Firebase estén configuradas correctamente en Streamlit Secrets o localmente.")
+        st.stop() # Detiene la ejecución de la app si Firebase no se puede inicializar
 
 # --- Estilos CSS personalizados ---
 st.markdown("""
@@ -163,6 +218,61 @@ if st.button("Buscar"):
             data = data.sort_values(by='precio')
         except:
             pass
+
+        # --- PREPARAR Y GUARDAR DATOS EN FIRESTORE ---
+        # Inicializa los precios para las librerías específicas con None
+        firestore_prices = {
+            'precio_communitas': None,
+            'precio_el_virrey': None,
+            'precio_ibero': None,
+            'precio_crisol': None
+        }
+
+        # Mapea los nombres de las librerías del DataFrame a los campos de Firestore
+        bookstore_map = {
+            'communitas': 'precio_communitas',
+            'el virrey': 'precio_el_virrey',
+            'ibero': 'precio_ibero',
+            'crisol': 'precio_crisol'
+        }
+
+        # Itera sobre los datos para extraer los precios y mapearlos
+        for _, row in data.iterrows():
+            libreria_name = row.get('librería', '').lower().strip()
+            price_value = row.get('precio')
+
+            # Verifica si el precio es válido y conviértelo a float si no es None/NaN
+            if pd.notnull(price_value) and price_value != '' and price_value is not None:
+                try:
+                    price_value = float(price_value)
+                except ValueError:
+                    price_value = None # Deja como None si la conversión falla
+            else:
+                price_value = None # Establece a None si no está disponible
+
+            if libreria_name in bookstore_map:
+                firestore_prices[bookstore_map[libreria_name]] = price_value
+
+        # Crea el documento a guardar en Firestore
+        search_data = {
+            'isbn': isbn,
+            'fecha_consulta': datetime.now(), # Timestamp actual con fecha y hora
+            'nombre_libro': nombre,
+            **firestore_prices # Desempaqueta el diccionario de precios en el documento
+        }
+
+        # Guarda el documento en Firestore
+        try:
+            # Asegúrate de que 'db' esté inicializado y disponible antes de intentar guardar
+            if 'db' in locals() or 'db' in globals():
+                # Usa la colección 'busquedas_libros' que creaste en Firestore
+                doc_ref = db.collection('busquedas_libros').add(search_data)
+                st.success(f"Datos de la búsqueda guardados en Firestore con ID: {doc_ref[1].id}")
+            else:
+                st.error("Error: La conexión a Firestore no se estableció correctamente. No se pudieron guardar los datos.")
+        except Exception as e:
+            st.error(f"Error al guardar los datos en Firestore: {e}")
+        # --- FIN DE LA SECCIÓN DE FIRESTORE ---
 
         for _, row in data.iterrows():
             libreria = row.get('librería', 'Librería')

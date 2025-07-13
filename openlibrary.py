@@ -9,7 +9,7 @@ def obtener_datos(x):
     response=requests.get(url)
     if response.status_code==200:
         info=response.json()
-
+        print(info)
         nombre=info.get('title') #
         fec_publicacion=info.get('publish_date') #
         try:
@@ -40,8 +40,12 @@ def obtener_datos(x):
                 paginas = ''
         except:
             paginas = ''
-        id_imagen=info.get('covers')[0]
-        url_imagen=f'https://covers.openlibrary.org/b/id/{id_imagen}-L.jpg' #
+        try:    
+            id_imagen=info.get('covers')[0]
+            url_imagen=f'https://covers.openlibrary.org/b/id/{id_imagen}-L.jpg' #
+        except:
+            id_imagen=''
+            url_imagen=''
 
     else:
         nombre=''
@@ -63,4 +67,4 @@ def obtener_datos(x):
     }
     return datos
 
-#print(obtener_datos(9788483930250))
+#print(obtener_datos(9788420664446))

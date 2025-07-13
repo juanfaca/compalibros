@@ -181,9 +181,9 @@ def obtener_datos(x):
     # Consulta a la API
     response = scraper.post(api_url, headers=headers, data=json.dumps(payload))
     data = response.json()
-    print(data)
+    #print(data)
     stock = data['result']['available_threshold']
-    print(stock)
+    #print(stock)
     if stock>0:
         dis='En Stock'
     else:
@@ -196,5 +196,5 @@ def obtener_datos(x):
     data = pd.DataFrame(registro)
     return data
 
-#df=obtener_datos(9788483930250)
+#df=obtener_datos(9788420664446)
 #print(df)
