@@ -223,6 +223,7 @@ if st.button("Buscar"):
         try:
             data['precio'] = data['precio'].astype(float)
             data = data.sort_values(by='precio')
+            #print(data)
         except:
             pass
 
@@ -241,7 +242,8 @@ if st.button("Buscar"):
         }
         print("DEBUG: Preparando datos para Firestore...")
         for _, row in data.iterrows():
-            libreria_name = row.get('librería', '').lower().strip()
+            #libreria_name = row.get('librería', '').lower().strip()
+            libreria_name = row.get('librería', '').lower().replace('librería ', '').strip()
             price_value = row.get('precio')
 
             if pd.notnull(price_value) and price_value != '' and price_value is not None:
@@ -267,13 +269,10 @@ if st.button("Buscar"):
         try:
             if "db" in st.session_state:
                 doc_ref = st.session_state.db.collection('busquedas_libros').add(search_data)
-                st.success(f"Datos de la búsqueda guardados en Firestore con ID: {doc_ref[1].id}")
                 print(f"DEBUG: Datos de la búsqueda guardados en Firestore con ID: {doc_ref[1].id}")
             else:
-                st.error("Error: El cliente de Firestore no está disponible en st.session_state. No se pudieron guardar los datos.")
                 print("ERROR: El cliente de Firestore no está disponible en st.session_state. No se pudieron guardar los datos.")
         except Exception as e:
-            st.error(f"Error al guardar los datos en Firestore: {e}")
             print(f"ERROR: Error al guardar los datos en Firestore: {e}")
         # --- FIN DE LA SECCIÓN DE FIRESTORE ---
 

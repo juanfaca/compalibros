@@ -1,4 +1,6 @@
 import pandas as pd
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 from ibero import obtener_datos as ibero
 from communitas import obtener_datos as communitas
 from crisol import obtener_datos as crisol
@@ -15,9 +17,6 @@ def precios(x):
     }
 
     resultados = pd.DataFrame()
-
-    # aux es siempre un diccionario, aunque se quede vacío
-    aux = {}
 
     for nombre, funcion in funciones.items():
         try:

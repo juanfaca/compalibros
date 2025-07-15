@@ -11,7 +11,7 @@ def obtener_datos(x):
     '''
     base='https://www.iberolibrerias.com'
     url=base+'/'+x+'?_q='+x+'&map=ft'
-    print(url)
+    #print(url)
     response=requests.get(url)
     byte_content=response.content
     html_string = byte_content.decode('utf-8')
@@ -22,7 +22,7 @@ def obtener_datos(x):
         href = link_tag.get('href')
         if href:  # Ensure the 'href' attribute actually exists
             hrefs.append(href)
-    if len(list(filter(lambda id: any(sub in id for sub in x) and 'https' not in id, hrefs))):
+    if len(list(filter(lambda id: any(sub in id for sub in x) and 'https' not in id, hrefs)))!=1:
         df = {
         "nombre": None,
         "marca": None,
@@ -118,5 +118,5 @@ def obtener_datos(x):
 
     return data
 
-#df=obtener_datos(9788437648828)
+#df=obtener_datos(9788418967986)
 #print(df)

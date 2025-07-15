@@ -9,7 +9,7 @@ def obtener_datos(x):
     response=requests.get(url)
     if response.status_code==200:
         info=response.json()
-        print(info)
+        #print(info)
         nombre=info.get('title') #
         fec_publicacion=info.get('publish_date') #
         try:
